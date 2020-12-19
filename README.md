@@ -11,7 +11,7 @@ Insert data:
 
 Insert data with a specified TTL:
 
-    $ curl -H "Content-Type: application/json" -X POST -d '{"action":"insert","key":"some_key2","value":[5,3,2],"ttl":300}' http://localhost:8080/api/cache_server
+    $ curl -H "Content-Type: application/json" -X POST -d '{"action":"insert","key":"some_key2","value":[5,3,2],"ttl":420}' http://localhost:8080/api/cache_server
 
     {"result": "ok"}
 
@@ -29,7 +29,7 @@ Lookup:
 
 Database lookup with the raising of data in the ETS:
 
-    $ curl -H "Content-Type: application/json" -X POST -d '{"action":"db_lookup","key":"some_key"}' http://localhost:8080/api/cache_server
+    $ curl -H "Content-Type: application/json" -X POST -d '{"action":"db_lookup","key":"some_key_db"}' http://localhost:8080/api/cache_server
 
     {"result": [1,2,3]}
 
