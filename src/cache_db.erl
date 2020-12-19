@@ -19,7 +19,7 @@
 create() ->
     mnesia:create_schema([node()]),
     mnesia:start(),
-    mnesia:create_table(?DB_TABLE,   [{attributes, record_info(fields, ?DB_TABLE)}]),
+    mnesia:create_table(?DB_TABLE,   [{attributes, record_info(fields, ?DB_TABLE)},{disc_only_copies, [node()]}]),
     mnesia:stop().
 
 start() ->
@@ -39,7 +39,7 @@ lookup(Key) ->
         X#?DB_TABLE.key =:= Key])) 
     end,
     {atomic,[{_Table, Key, Value, _Time}]} = mnesia:transaction(F),
-    Value.
+    {ok,Value}.
 
 lookup_by_date(From,To) ->
     F = fun() -> qlc:e(qlc:q([{X#?DB_TABLE.key,X#?DB_TABLE.value} || X <- mnesia:table(?DB_TABLE), 
@@ -74,7 +74,7 @@ remove_item(Key) ->
     ].
 
     lookup_test_() -> [
-        ?_assert(cache_db:lookup(test_key) =:= some_val)
+        ?_assert(cache_db:lookup(test_key) =:= {ok,some_val})
     ].
     
     lookup_by_date_test_() -> [
