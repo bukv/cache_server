@@ -36,6 +36,12 @@ request_handler(#{<<"action">> := <<"lookup">>, <<"key">> := Key}) ->
     TableName = ?TABLE_NAME,
     {ok,Value} = cache_server:lookup(TableName, Key),
     [{<<"result">>,Value}];
+request_handler(#{<<"action">> := <<"db_lookup">>, <<"key">> := Key}) ->
+    TableName = ?TABLE_NAME,
+    TTL = ?DEFAULT_TTL,    
+    {ok,Value} = cache_server:db_lookup(TableName, Key),
+    cache_server:insert(TableName, Key, Value, TTL),
+    [{<<"result">>,Value}];
 request_handler(#{<<"action">> := <<"lookup_by_date">>, <<"date_from">> := From, <<"date_to">> := To}) ->
     TableName = ?TABLE_NAME,
     DateFrom = time_format:convert_date_and_time_to_tuple(From),

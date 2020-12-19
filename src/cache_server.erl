@@ -9,6 +9,7 @@
     insert/4,
     insert_with_db/4,
     lookup/2,
+    db_lookup/2,
     lookup_by_date/3
     ]).
 
@@ -35,6 +36,9 @@ insert_with_db(TableName, Key, Value, TTL) ->
 
 lookup(TableName, Key) -> 
     gen_server:call(?MODULE, {lookup, TableName, Key}).
+
+db_lookup(TableName, Key) -> 
+    gen_server:call(?MODULE, {db_lookup, TableName, Key}).
 
 lookup_by_date(TableName, DateFrom, DateTo) ->
     gen_server:call(?MODULE, {lookup_by_date, TableName, DateFrom, DateTo}).
@@ -64,6 +68,9 @@ handle_call({insert_with_db, TableName, Key, Value, TTL}, _From, Tab) ->
     {reply, Reply, Tab};
 handle_call({lookup, TableName, Key}, _From, Tab) ->
     Reply = cache_ets:lookup(TableName, Key),
+    {reply, Reply, Tab};
+handle_call({db_lookup, _TableName, Key}, _From, Tab) ->
+    Reply = cache_db:lookup(Key),
     {reply, Reply, Tab};
 handle_call({lookup_by_date, TableName, DateFrom, DateTo}, _From, Tab) ->
     FromInSeconds = calendar:datetime_to_gregorian_seconds(DateFrom),
