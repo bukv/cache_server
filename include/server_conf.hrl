@@ -1,4 +1,4 @@
 -define(TABLE_NAME, cache_table).
 -define(DB_TABLE, db_cache).
 -define(DROP_INTERVAL, 300).
--define(DEFAULT_TTL, 600).
+-define(DEFAULT_TTL, 300).
