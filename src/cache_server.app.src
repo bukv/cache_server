@@ -1,0 +1,27 @@
+{application, cache_server,
+ [{description, "An OTP application, homework lesson 7"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib,
+    cowboy,
+    cowlib,
+    jsx,
+    ranch
+   ]},
+  {env,[]},
+  {modules, [
+      cache_server_app, 
+      cache_server_h, 
+      cache_server_sup, 
+      cache_server, 
+      cache_db, 
+      cache_ets, 
+      time_format
+    ]},
+  {mod, {cache_server_app,[]}},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
