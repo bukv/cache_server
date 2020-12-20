@@ -7,10 +7,13 @@
     start_link/2, 
     stop/0,
     insert/4,
+    insert_from_list/3,
     insert_with_db/4,
     lookup/2,
     db_lookup/2,
-    lookup_by_date/3
+    lookup_by_date/3,
+    db_lookup_by_date/2,
+    db_delete_item/1
     ]).
 
 %% gen_server callbacks
@@ -31,6 +34,9 @@ stop()  ->
 insert(TableName, Key, Value, TTL) -> 
     gen_server:call(?MODULE, {insert, TableName, Key, Value, TTL}).
 
+insert_from_list(TableName, PropList, TTL) -> 
+    gen_server:call(?MODULE, {insert_from_list, TableName, PropList, TTL}).
+
 insert_with_db(TableName, Key, Value, TTL) -> 
     gen_server:call(?MODULE, {insert_with_db, TableName, Key, Value, TTL}).
 
@@ -42,6 +48,12 @@ db_lookup(TableName, Key) ->
 
 lookup_by_date(TableName, DateFrom, DateTo) ->
     gen_server:call(?MODULE, {lookup_by_date, TableName, DateFrom, DateTo}).
+
+db_lookup_by_date(DateFrom, DateTo) ->
+    gen_server:call(?MODULE, {db_lookup_by_date, DateFrom, DateTo}).
+
+db_delete_item(Key) ->
+    gen_server:call(?MODULE, {db_delete_item, Key}).
 
 start_link(TableName, ParamProp) -> 
     DropInterval = proplists:get_value(drop_interval, ParamProp),
@@ -60,6 +72,9 @@ init(Params) ->
 handle_call({insert, TableName, Key, Value, TTL}, _From, Tab) ->
     Reply = cache_ets:insert(TableName, Key, Value, TTL),
     {reply, Reply, Tab};
+handle_call({insert_from_list, TableName, PropList, TTL}, _From, Tab) ->
+    Reply = cache_ets:insert_from_list(TableName, PropList, TTL),
+    {reply, Reply, Tab};
 handle_call({insert_with_db, TableName, Key, Value, TTL}, _From, Tab) ->
     Reply = [
         {<<"ets">>,cache_ets:insert(TableName, Key, Value, TTL)},
@@ -76,7 +91,15 @@ handle_call({lookup_by_date, TableName, DateFrom, DateTo}, _From, Tab) ->
     FromInSeconds = calendar:datetime_to_gregorian_seconds(DateFrom),
     ToInSeconds = calendar:datetime_to_gregorian_seconds(DateTo),
     Reply = cache_ets:lookup_by_date(TableName, FromInSeconds, ToInSeconds),
-    {reply, Reply, Tab};        
+    {reply, Reply, Tab}; 
+handle_call({db_lookup_by_date, DateFrom, DateTo}, _From, Tab) ->
+    FromInSeconds = calendar:datetime_to_gregorian_seconds(DateFrom),
+    ToInSeconds = calendar:datetime_to_gregorian_seconds(DateTo),
+    Reply = cache_db:lookup_by_date(FromInSeconds, ToInSeconds),
+    {reply, Reply, Tab}; 
+handle_call({db_delete_item, Key}, _From, Tab) ->
+    Reply = cache_db:delete_item(Key),
+    {reply, Reply, Tab};       
 handle_call(stop, _From, Tab) ->
     {stop, normal, stopped, Tab};
 handle_call(_Request, _From, State) ->
