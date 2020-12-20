@@ -6,7 +6,7 @@
     insert/2,
     lookup/1,
     lookup_by_date/2,
-    remove_item/1
+    delete_item/1
 ]).
 
 -include("../include/server_conf.hrl").
@@ -49,12 +49,18 @@ lookup_by_date(From,To) ->
     {atomic, ResultList} = mnesia:transaction(F),
     ResultList.
 
-remove_item(Key) ->
+delete_item(Key) ->
     Oid = {?DB_TABLE, Key},
     F = fun() ->
         mnesia:delete(Oid)
     end,
-    mnesia:transaction(F).
+    Result = mnesia:transaction(F),
+    case Result of
+        {atomic,ok} ->
+            ok;
+        _ ->
+            false
+    end.
 
 %%%----------------------------------------------------------------------
 %% Test
@@ -82,6 +88,6 @@ remove_item(Key) ->
     ].
 
     remove_item_test_() -> [
-        ?_assert(cache_db:remove_item(test_key) =:= {atomic,ok})
+        ?_assert(cache_db:delete_item(test_key) =:= ok)
     ].
 -endif.
