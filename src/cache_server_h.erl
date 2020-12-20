@@ -48,5 +48,16 @@ request_handler(#{<<"action">> := <<"lookup_by_date">>, <<"date_from">> := From,
     DateTo = time_format:convert_date_and_time_to_tuple(To),
     Result = cache_server:lookup_by_date(TableName, DateFrom, DateTo),
     [{<<"result">>,Result}];
+request_handler(#{<<"action">> := <<"db_lookup_by_date">>, <<"date_from">> := From, <<"date_to">> := To}) ->
+    TableName = ?TABLE_NAME,
+    TTL = ?DEFAULT_TTL,
+    DateFrom = time_format:convert_date_and_time_to_tuple(From),
+    DateTo = time_format:convert_date_and_time_to_tuple(To),
+    PropList = cache_server:db_lookup_by_date(DateFrom, DateTo),
+    ok = cache_server:insert_from_list(TableName,PropList,TTL),
+    [{<<"result">>,PropList}];
+request_handler(#{<<"action">> := <<"db_delete_item">>, <<"key">> := Key}) ->
+    Result = cache_server:db_delete_item(Key),
+    [{<<"result">>,Result}];
 request_handler(_Map) ->
     [{<<"result">>,<<"bad request">>}].
