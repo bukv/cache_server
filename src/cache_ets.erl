@@ -2,7 +2,8 @@
 
 -export([
     create/1, 
-    insert/4, 
+    insert/4,
+    insert_from_list/3, 
     lookup/2, 
     lookup_by_date/3, 
     delete_obsolete/1
@@ -20,6 +21,13 @@ create(TableName) ->
 insert(TableName, Key, Value, TTL) ->
     CurrentTime = time_format:current_time(),
     ets:insert(TableName, #cache_record{key=Key, value=Value, creation_time=CurrentTime, ttl=TTL}),
+    ok.
+
+
+insert_from_list(TableName, [{Key,Value}|T], TTL) ->
+    cache_ets:insert(TableName, Key, Value, TTL),
+    insert_from_list(TableName, T, TTL);
+insert_from_list(_TableName, [], _TTL) ->
     ok.
 
 lookup(TableName, Key) ->
@@ -58,6 +66,10 @@ delete_obsolete(TableName) ->
         ?_assert(cache_ets:insert(test_table, key_test, val_test, 1) =:= ok),
         ?_assert(cache_ets:insert(test_table, key_test2, val_test2, 10) =:= ok)       
     ].
+
+    insert_from_list_test_() -> [
+            ?_assert(cache_ets:insert_from_list(test_table, [{<<"some_key_1">>,13},{<<"some_key_2">>,1}], 1) =:= ok)     
+        ].
 
     lookup_test_() -> [
         ?_assert(cache_ets:lookup(test_table, key_test) =:= {ok,val_test}),
