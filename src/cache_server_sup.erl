@@ -17,10 +17,12 @@ start_link() ->
 
 init([]) ->
     {ok, TableName} = application:get_env(cache_server, table_name),
+    {ok, TableNameDB} = application:get_env(cache_server, db_table_name),
     {ok, DropInterval} = application:get_env(cache_server, drop_interval),
+    {ok, DefaultTTL} = application:get_env(cache_server, default_ttl),
     SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
     ChildSpecs = [#{id => cache_server,
-                    start => {cache_server, start_link, [TableName, [{drop_interval, DropInterval}]]},
+                    start => {cache_server, start_link, [TableName, TableNameDB, [{drop_interval, DropInterval},{default_ttl, DefaultTTL}]]},
                     restart => permanent,
                     shutdown => brutal_kill,
                     type => worker,

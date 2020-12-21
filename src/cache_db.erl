@@ -1,56 +1,59 @@
 -module(cache_db).
 
 -export([
-    start/0,
-    create/0,
+    start/1,
+    create/1,
     insert/2,
-    lookup/1,
-    lookup_by_date/2,
-    delete_item/1
+    lookup/2,
+    lookup_by_date/3,
+    delete_item/2
 ]).
-
--include("../include/server_conf.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--record(?DB_TABLE, {key, value, creation_time}).
+-record(db_cache, {key, value, creation_time}).
 
-create() ->
+create(TableNameDB) ->
     mnesia:create_schema([node()]),
     mnesia:start(),
-    mnesia:create_table(?DB_TABLE,   [{attributes, record_info(fields, ?DB_TABLE)},{disc_only_copies, [node()]}]),
+    mnesia:create_table(TableNameDB,   [{attributes, record_info(fields, db_cache)},{disc_only_copies, [node()]}]),
     mnesia:stop().
 
-start() ->
+start(TableNameDB) ->
     mnesia:start(),
-    mnesia:wait_for_tables([?DB_TABLE], 20000).
+    mnesia:wait_for_tables([TableNameDB], 20000).
 
-insert(Key,Value) ->
-    Row = #?DB_TABLE{key=Key, value=Value, creation_time=time_format:current_time()},
+insert(Key, Value) ->
+    Row = #db_cache{key=Key, value=Value, creation_time=time_format:current_time()},
     WriteFun = fun() ->
         mnesia:write(Row)
         end,
     {atomic,Status} = mnesia:transaction(WriteFun),
     Status.
 
-lookup(Key) ->
-    F = fun() -> qlc:e(qlc:q([X || X <- mnesia:table(?DB_TABLE), 
-        X#?DB_TABLE.key =:= Key])) 
+lookup(TableNameDB, Key) ->
+    F = fun() -> qlc:e(qlc:q([X || X <- mnesia:table(TableNameDB), 
+        X#db_cache.key =:= Key])) 
     end,
-    {atomic,[{_Table, Key, Value, _Time}]} = mnesia:transaction(F),
-    {ok,Value}.
+    {atomic,Result} = mnesia:transaction(F),
+    case Result of
+        [{_Table, _Key, Value, _Time}] ->
+            {ok,Value};
+        _ -> 
+            {ok,[]}
+    end.
 
-lookup_by_date(From,To) ->
-    F = fun() -> qlc:e(qlc:q([{X#?DB_TABLE.key,X#?DB_TABLE.value} || X <- mnesia:table(?DB_TABLE), 
-        X#?DB_TABLE.creation_time >= From,
-        X#?DB_TABLE.creation_time =< To])) 
+lookup_by_date(TableNameDB, From, To) ->
+    F = fun() -> qlc:e(qlc:q([{X#db_cache.key,X#db_cache.value} || X <- mnesia:table(TableNameDB), 
+        X#db_cache.creation_time >= From,
+        X#db_cache.creation_time =< To])) 
     end,
     {atomic, ResultList} = mnesia:transaction(F),
     ResultList.
 
-delete_item(Key) ->
-    Oid = {?DB_TABLE, Key},
+delete_item(TableNameDB, Key) ->
+    Oid = {TableNameDB, Key},
     F = fun() ->
         mnesia:delete(Oid)
     end,

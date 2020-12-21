@@ -4,14 +4,17 @@
 -define(SERVER, ?MODULE).
 
 -export([
-    start_link/2, 
+    start_link/3, 
     stop/0,
-    insert/4,
-    insert_from_list/3,
-    insert_with_db/4,
-    lookup/2,
-    db_lookup/2,
-    lookup_by_date/3,
+    insert/3,
+    insert/2,
+    insert_from_list/2,
+    insert_from_list/1,
+    insert_with_db/2,
+    insert_with_db/3,
+    lookup/1,
+    db_lookup/1,
+    lookup_by_date/2,
     db_lookup_by_date/2,
     db_delete_item/1
     ]).
@@ -26,28 +29,42 @@
     handle_info/2
     ]).
 
--record(state, {}).
+-record(state, {
+    table_name,
+    db_table_name,
+    drop_interval,
+    default_ttl
+}).
 
 stop()  -> 
     gen_server:call(?MODULE, stop).
 
-insert(TableName, Key, Value, TTL) -> 
-    gen_server:call(?MODULE, {insert, TableName, Key, Value, TTL}).
+insert(Key, Value) -> 
+    gen_server:call(?MODULE, {insert, Key, Value}).
 
-insert_from_list(TableName, PropList, TTL) -> 
-    gen_server:call(?MODULE, {insert_from_list, TableName, PropList, TTL}).
+insert(Key, Value, TTL) -> 
+    gen_server:call(?MODULE, {insert_with_ttl, Key, Value, TTL}).
 
-insert_with_db(TableName, Key, Value, TTL) -> 
-    gen_server:call(?MODULE, {insert_with_db, TableName, Key, Value, TTL}).
+insert_from_list(PropList, TTL) -> 
+    gen_server:call(?MODULE, {insert_from_list_with_ttl, PropList, TTL}).
 
-lookup(TableName, Key) -> 
-    gen_server:call(?MODULE, {lookup, TableName, Key}).
+insert_from_list(PropList) -> 
+    gen_server:call(?MODULE, {insert_from_list, PropList}).
 
-db_lookup(TableName, Key) -> 
-    gen_server:call(?MODULE, {db_lookup, TableName, Key}).
+insert_with_db(Key, Value) -> 
+    gen_server:call(?MODULE, {insert_with_db, Key, Value}).
 
-lookup_by_date(TableName, DateFrom, DateTo) ->
-    gen_server:call(?MODULE, {lookup_by_date, TableName, DateFrom, DateTo}).
+insert_with_db(Key, Value, TTL) -> 
+    gen_server:call(?MODULE, {insert_with_db_and_ttl, Key, Value, TTL}).
+
+lookup(Key) -> 
+    gen_server:call(?MODULE, {lookup,Key}).
+
+db_lookup(Key) -> 
+    gen_server:call(?MODULE, {db_lookup,Key}).
+
+lookup_by_date(DateFrom, DateTo) ->
+    gen_server:call(?MODULE, {lookup_by_date, DateFrom, DateTo}).
 
 db_lookup_by_date(DateFrom, DateTo) ->
     gen_server:call(?MODULE, {db_lookup_by_date, DateFrom, DateTo}).
@@ -55,51 +72,71 @@ db_lookup_by_date(DateFrom, DateTo) ->
 db_delete_item(Key) ->
     gen_server:call(?MODULE, {db_delete_item, Key}).
 
-start_link(TableName, ParamProp) -> 
+start_link(TableName, TableNameDB, ParamProp) -> 
     DropInterval = proplists:get_value(drop_interval, ParamProp),
-    Params = #{table_name => TableName, drop_interval => DropInterval},
+    DefaultTTL = proplists:get_value(default_ttl, ParamProp),
+    Params = #{table_name => TableName, drop_interval => DropInterval, db_table_name => TableNameDB, default_ttl => DefaultTTL},
     gen_server:start_link({local, ?SERVER}, ?MODULE, Params, []).
 
 init(Params) -> 
     TableName = maps:get(table_name, Params),
+    TableNameDB = maps:get(db_table_name, Params),
     DropInterval = maps:get(drop_interval, Params),
+    DefaultTTL = maps:get(default_ttl, Params),
     cache_ets:create(TableName),
-    cache_db:create(),
-    cache_db:start(),
+    cache_db:create(TableNameDB),
+    cache_db:start(TableNameDB),
     timer:apply_interval(DropInterval*1000, cache_ets, delete_obsolete, [TableName]),
-    {ok, #state{}}.
+    {ok, #state{
+        table_name = TableName,
+        db_table_name = TableNameDB,
+        drop_interval = DropInterval,
+        default_ttl = DefaultTTL
+    }}.
 
-handle_call({insert, TableName, Key, Value, TTL}, _From, Tab) ->
+handle_call({insert, Key, Value}, _From,  #state{table_name = TableName, default_ttl=TTL} = State) ->
     Reply = cache_ets:insert(TableName, Key, Value, TTL),
-    {reply, Reply, Tab};
-handle_call({insert_from_list, TableName, PropList, TTL}, _From, Tab) ->
+    {reply, Reply, State};
+handle_call({insert_with_ttl, Key, Value, TTL}, _From,  #state{table_name = TableName} = State) ->
+    Reply = cache_ets:insert(TableName, Key, Value, TTL),
+    {reply, Reply, State};
+handle_call({insert_from_list, PropList}, _From, #state{table_name = TableName, default_ttl=TTL} = State) ->
     Reply = cache_ets:insert_from_list(TableName, PropList, TTL),
-    {reply, Reply, Tab};
-handle_call({insert_with_db, TableName, Key, Value, TTL}, _From, Tab) ->
+    {reply, Reply, State};
+handle_call({insert_from_list_with_ttl, PropList, TTL}, _From, #state{table_name = TableName} = State) ->
+    Reply = cache_ets:insert_from_list(TableName, PropList, TTL),
+    {reply, Reply, State};
+handle_call({insert_with_db_and_ttl, Key, Value, TTL}, _From, #state{table_name = TableName} = State) ->
     Reply = [
         {<<"ets">>,cache_ets:insert(TableName, Key, Value, TTL)},
         {<<"db">>,cache_db:insert(Key, Value)}
     ],
-    {reply, Reply, Tab};
-handle_call({lookup, TableName, Key}, _From, Tab) ->
+    {reply, Reply, State};
+handle_call({insert_with_db, Key, Value}, _From, #state{table_name = TableName, default_ttl=TTL} = State) ->
+    Reply = [
+        {<<"ets">>,cache_ets:insert(TableName, Key, Value, TTL)},
+        {<<"db">>,cache_db:insert(Key, Value)}
+    ],
+    {reply, Reply, State};
+handle_call({lookup, Key}, _From, #state{table_name = TableName} = State) ->
     Reply = cache_ets:lookup(TableName, Key),
-    {reply, Reply, Tab};
-handle_call({db_lookup, _TableName, Key}, _From, Tab) ->
-    Reply = cache_db:lookup(Key),
-    {reply, Reply, Tab};
-handle_call({lookup_by_date, TableName, DateFrom, DateTo}, _From, Tab) ->
+    {reply, Reply, State};
+handle_call({db_lookup, Key}, _From, #state{db_table_name = TableNameDB} = State) ->
+    Reply = cache_db:lookup(TableNameDB, Key),
+    {reply, Reply, State};
+handle_call({lookup_by_date, DateFrom, DateTo}, _From, #state{table_name = TableName} = State) ->
     FromInSeconds = calendar:datetime_to_gregorian_seconds(DateFrom),
     ToInSeconds = calendar:datetime_to_gregorian_seconds(DateTo),
     Reply = cache_ets:lookup_by_date(TableName, FromInSeconds, ToInSeconds),
-    {reply, Reply, Tab}; 
-handle_call({db_lookup_by_date, DateFrom, DateTo}, _From, Tab) ->
+    {reply, Reply, State}; 
+handle_call({db_lookup_by_date, DateFrom, DateTo}, _From,  #state{db_table_name = TableNameDB} = State) ->
     FromInSeconds = calendar:datetime_to_gregorian_seconds(DateFrom),
     ToInSeconds = calendar:datetime_to_gregorian_seconds(DateTo),
-    Reply = cache_db:lookup_by_date(FromInSeconds, ToInSeconds),
-    {reply, Reply, Tab}; 
-handle_call({db_delete_item, Key}, _From, Tab) ->
-    Reply = cache_db:delete_item(Key),
-    {reply, Reply, Tab};       
+    Reply = cache_db:lookup_by_date(TableNameDB, FromInSeconds, ToInSeconds),
+    {reply, Reply, State}; 
+handle_call({db_delete_item, Key}, _From, #state{db_table_name = TableNameDB} = State) ->
+    Reply = cache_db:delete_item(TableNameDB, Key),
+    {reply, Reply, State};       
 handle_call(stop, _From, Tab) ->
     {stop, normal, stopped, Tab};
 handle_call(_Request, _From, State) ->
