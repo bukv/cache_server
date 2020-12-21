@@ -10,7 +10,13 @@
     jsx,
     ranch
    ]},
-  {env,[]},
+  %% Server configuration
+  {env,[
+    {table_name, cache_table},
+    {db_table_name, db_cache},
+    {drop_interval, 300},
+    {default_ttl, 300}
+  ]},
   {modules, [
       cache_server_app, 
       cache_server_h, 
