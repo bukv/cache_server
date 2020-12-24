@@ -3,7 +3,7 @@
 -export([
     start/1,
     create/1,
-    insert/2,
+    insert/3,
     lookup/2,
     lookup_by_date/3,
     delete_item/2
@@ -12,29 +12,29 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--record(db_cache, {key, value, creation_time}).
+-record(cache, {key, value, creation_time}).
 
 create(TableNameDB) ->
     mnesia:create_schema([node()]),
     mnesia:start(),
-    mnesia:create_table(TableNameDB,   [{attributes, record_info(fields, db_cache)},{disc_only_copies, [node()]}]),
+    mnesia:create_table(TableNameDB,   [{attributes, record_info(fields, cache)},{disc_only_copies, [node()]},{record_name, cache}]),
     mnesia:stop().
 
 start(TableNameDB) ->
     mnesia:start(),
     mnesia:wait_for_tables([TableNameDB], 20000).
 
-insert(Key, Value) ->
-    Row = #db_cache{key=Key, value=Value, creation_time=time_format:current_time()},
+insert(TableNameDB, Key, Value) -> 
+    Row = #cache{key=Key, value=Value, creation_time=time_format:current_time()},
     WriteFun = fun() ->
-        mnesia:write(Row)
+        mnesia:write(TableNameDB, Row, write)
         end,
     {atomic,Status} = mnesia:transaction(WriteFun),
     Status.
 
 lookup(TableNameDB, Key) ->
     F = fun() -> qlc:e(qlc:q([X || X <- mnesia:table(TableNameDB), 
-        X#db_cache.key =:= Key])) 
+        X#cache.key =:= Key])) 
     end,
     {atomic,Result} = mnesia:transaction(F),
     case Result of
@@ -45,9 +45,9 @@ lookup(TableNameDB, Key) ->
     end.
 
 lookup_by_date(TableNameDB, From, To) ->
-    F = fun() -> qlc:e(qlc:q([{X#db_cache.key,X#db_cache.value} || X <- mnesia:table(TableNameDB), 
-        X#db_cache.creation_time >= From,
-        X#db_cache.creation_time =< To])) 
+    F = fun() -> qlc:e(qlc:q([{X#cache.key,X#cache.value} || X <- mnesia:table(TableNameDB), 
+        X#cache.creation_time >= From,
+        X#cache.creation_time =< To])) 
     end,
     {atomic, ResultList} = mnesia:transaction(F),
     ResultList.
