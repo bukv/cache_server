@@ -70,27 +70,27 @@ delete_item(TableNameDB, Key) ->
 %%%----------------------------------------------------------------------
 -ifdef(TEST).
     create_test_() -> [
-        ?_assert(cache_db:create() =:= stopped)
+        ?_assert(cache_db:create(test_table) =:= stopped)
     ].
 
     start_test_() -> [
-        ?_assert(cache_db:start() =:= ok)
+        ?_assert(cache_db:start(test_table) =:= ok)
     ].
 
     insert_test_() -> [
-        ?_assert(cache_db:insert(test_key, some_val) =:= ok),
-        ?_assert(cache_db:insert(test_key2, some_val2) =:= ok) 
+        ?_assert(cache_db:insert(test_table, test_key, some_val) =:= ok),
+        ?_assert(cache_db:insert(test_table, test_key2, some_val2) =:= ok) 
     ].
 
     lookup_test_() -> [
-        ?_assert(cache_db:lookup(test_key) =:= {ok,some_val})
+        ?_assert(cache_db:lookup(test_table, test_key) =:= {ok,some_val})
     ].
     
     lookup_by_date_test_() -> [
-        ?_assert(cache_db:lookup_by_date(63775531972, 65984520571) =:= [{test_key,some_val},{test_key2,some_val2}])
+        ?_assert(cache_db:lookup_by_date(test_table, 63775531972, 65984520571) =:= [{test_key,some_val},{test_key2,some_val2}])
     ].
 
     remove_item_test_() -> [
-        ?_assert(cache_db:delete_item(test_key) =:= ok)
+        ?_assert(cache_db:delete_item(test_table, test_key) =:= ok)
     ].
 -endif.
