@@ -106,16 +106,16 @@ handle_call({insert_from_list, PropList}, _From, #state{table_name = TableName, 
 handle_call({insert_from_list_with_ttl, PropList, TTL}, _From, #state{table_name = TableName} = State) ->
     Reply = cache_ets:insert_from_list(TableName, PropList, TTL),
     {reply, Reply, State};
-handle_call({insert_with_db_and_ttl, Key, Value, TTL}, _From, #state{table_name = TableName} = State) ->
+handle_call({insert_with_db_and_ttl, Key, Value, TTL}, _From, #state{table_name = TableName, db_table_name = TableNameDB} = State) ->
     Reply = [
         {<<"ets">>,cache_ets:insert(TableName, Key, Value, TTL)},
-        {<<"db">>,cache_db:insert(Key, Value)}
+        {<<"db">>,cache_db:insert(TableNameDB, Key, Value)}
     ],
     {reply, Reply, State};
-handle_call({insert_with_db, Key, Value}, _From, #state{table_name = TableName, default_ttl=TTL} = State) ->
+handle_call({insert_with_db, Key, Value}, _From, #state{table_name = TableName, db_table_name = TableNameDB, default_ttl=TTL} = State) ->
     Reply = [
         {<<"ets">>,cache_ets:insert(TableName, Key, Value, TTL)},
-        {<<"db">>,cache_db:insert(Key, Value)}
+        {<<"db">>,cache_db:insert(TableNameDB, Key, Value)}
     ],
     {reply, Reply, State};
 handle_call({lookup, Key}, _From, #state{table_name = TableName} = State) ->
