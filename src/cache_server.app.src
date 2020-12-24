@@ -1,5 +1,5 @@
 {application, cache_server,
- [{description, "An OTP application, homework lesson 7"},
+ [{description, "An OTP application, caching server on Erlang"},
   {vsn, "v0.1-alpha"},
   {registered, []},
   {applications,

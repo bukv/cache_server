@@ -1,4 +1,4 @@
-Erlang cache server
+Caching server on Erlang
 =====
 
 An OTP application
