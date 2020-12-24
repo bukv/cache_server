@@ -1,6 +1,6 @@
 {application, cache_server,
  [{description, "An OTP application, homework lesson 7"},
-  {vsn, "0.1.0"},
+  {vsn, "v0.1-alpha"},
   {registered, []},
   {applications,
    [kernel,
