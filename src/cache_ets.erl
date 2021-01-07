@@ -6,7 +6,8 @@
     insert_from_list/3, 
     lookup/2, 
     lookup_by_date/3, 
-    delete_obsolete/1
+    delete_obsolete/1,
+    close_table/1
     ]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -54,6 +55,10 @@ delete_obsolete(TableName) ->
     ets:select_delete(TableName, MatchSpec),
     ok.
 
+close_table(TableName) ->
+    ets:delete(TableName),
+    ok.
+
 %%%----------------------------------------------------------------------
 %% Test
 %%%----------------------------------------------------------------------
@@ -87,5 +92,9 @@ delete_obsolete(TableName) ->
     delete_obsolete_test_() -> [
         ?_assert(cache_ets:delete_obsolete(test_table) =:= ok),
         ?_assert(ets:prev(test_table, key_test2) =:= '$end_of_table')
+    ].
+
+    close_table_test_() -> [
+        ?_assert(cache_ets:close_table(test_table) =:= ok)    
     ].
 -endif.

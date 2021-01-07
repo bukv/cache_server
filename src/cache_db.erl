@@ -2,6 +2,7 @@
 
 -export([
     start/1,
+    stop/0,
     create/1,
     insert/3,
     lookup/2,
@@ -23,6 +24,9 @@ create(TableNameDB) ->
 start(TableNameDB) ->
     mnesia:start(),
     mnesia:wait_for_tables([TableNameDB], 20000).
+
+stop() ->
+    mnesia:stop().
 
 insert(TableNameDB, Key, Value) -> 
     Row = #cache{key=Key, value=Value, creation_time=time_format:current_time()},
@@ -92,5 +96,9 @@ delete_item(TableNameDB, Key) ->
 
     remove_item_test_() -> [
         ?_assert(cache_db:delete_item(test_table, test_key) =:= ok)
+    ].
+
+    stop_test_() -> [
+        ?_assert(cache_db:stop() =:= stopped)
     ].
 -endif.

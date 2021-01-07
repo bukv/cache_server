@@ -148,8 +148,9 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) -> 
     {noreply, State}.
 
-terminate(_Reason, _State) -> 
-    ok.
+terminate(_Reason,  #state{table_name = TableName}) -> 
+    cache_db:stop(),
+    cache_ets:close_table(TableName).
 
 code_change(_OldVsn, State, _Extra) -> 
     {ok, State}.
